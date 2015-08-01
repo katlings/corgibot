@@ -12,7 +12,7 @@ from tweepy.streaming import StreamListener
 from daemon import Daemon
 
 corgibotdir = os.path.dirname(os.path.abspath(__file__))
-logging.basicConfig(filename=corgibotdir + "/corgibot.log", filemode='w', level=logging.DEBUG)
+logging.basicConfig(filename=corgibotdir + "/corgibot.log", filemode='w', level=logging.INFO)
 
 with open(corgibotdir + "/creds.json", 'r') as f:
     creds = json.loads(f.read())
@@ -29,17 +29,14 @@ api = API(auth)
 
 
 def tweet_about_corgi(tweet):
-    if tweet.get("retweeted_status"):
-        logging.debug("Not replying to a RT")
+    username = tweet.get("user", {}).get("screen_name", "")
+    logging.debug("User who tweeted was %s", username)
+    name = tweet.get("user", {}).get("name", "")
+
+    if "corgi" in username.lower() or "corgi" in name.lower() or username.lower() == "hartknyx":
+        logging.info("Not replying to a corgi-themed twitter or myself")
         return
 
-    user = tweet.get("user", {}).get("screen_name")
-    logging.debug("User who tweeted was %s", user)
-
-    if user and ("corgi" in user.lower() or user.lower() == "hartknyx"):
-        logging.debug("Not replying to a corgi-themed twitter or myself")
-        return
-    
     tid = tweet.get("id")
     if tid:
         logging.info("Everything in order; tweeting about the corgi!")
@@ -65,7 +62,12 @@ class corgiListener(StreamListener):
 class Tweeter(Daemon):
     def run(self):
         tStream = Stream(auth, corgiListener())
-        tStream.userstream()
+        while True:
+            try:
+                tStream.userstream()
+            except Exception as e:
+                logging.warning("Encountered an error: %s", e)
+                continue
 
 
 if __name__ == "__main__":
