@@ -12,7 +12,7 @@ from tweepy.streaming import StreamListener
 from daemon import Daemon
 
 corgibotdir = os.path.dirname(os.path.abspath(__file__))
-logging.basicConfig(filename=corgibotdir + "/corgibot.log", filemode='w', level=logging.INFO)
+logging.basicConfig(filename=corgibotdir + "/corgibot.log", filemode='w', level=logging.DEBUG)
 
 with open(corgibotdir + "/creds.json", 'r') as f:
     creds = json.loads(f.read())
@@ -40,7 +40,7 @@ def tweet_about_corgi(tweet):
     tid = tweet.get("id")
     if tid:
         logging.info("Everything in order; tweeting about the corgi!")
-        message = "@%s corgi!" % (user,)
+        message = "@%s corgi!" % (username,)
         api.update_status(status=message, in_reply_to_status_id=tid)
 
 
