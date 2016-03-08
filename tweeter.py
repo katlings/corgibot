@@ -17,10 +17,10 @@ logging.basicConfig(filename=corgibotdir + "/corgibot.log", filemode='w', level=
 with open(corgibotdir + "/creds.json", 'r') as f:
     creds = json.loads(f.read())
 
-consumer_key=creds["consumer_key"]
-consumer_secret=creds["consumer_secret"]
-access_token_key=creds["access_token_key"]
-access_token_secret=creds["access_token_secret"]
+consumer_key = creds["consumer_key"]
+consumer_secret = creds["consumer_secret"]
+access_token_key = creds["access_token_key"]
+access_token_secret = creds["access_token_secret"]
 
 auth = OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token_key, access_token_secret)
@@ -28,41 +28,54 @@ auth.set_access_token(access_token_key, access_token_secret)
 api = API(auth)
 
 
-def tweet_about_corgi(tweet):
-    username = tweet.get("user", {}).get("screen_name", "")
+def tweet_about_corgi(status):
+    username = status.user.screen_name
     logging.debug("User who tweeted was %s", username)
-    name = tweet.get("user", {}).get("name", "")
+    name = status.user.name
 
     if "corgi" in username.lower() or "corgi" in name.lower() or username.lower() == "hartknyx":
         logging.info("Not replying to a corgi-themed twitter or myself")
         return
 
-    tid = tweet.get("id")
+    tid = status.id
     if tid:
         logging.info("Everything in order; tweeting about the corgi!")
         message = "@%s corgi!" % (username,)
         api.update_status(status=message, in_reply_to_status_id=tid)
 
 
-class corgiListener(StreamListener):
-    def on_data(self, data):
-        logging.debug(data)
-        tweet = json.loads(data)
-
-        if "corgi" in tweet.get("text", "").lower():
+class CorgiListener(StreamListener):
+    def on_status(self, status):
+        if "corgi" in status.text.lower():
             logging.info("CORGI!!!!!")
-            tweet_about_corgi(tweet)
+            time.sleep(.1)
+            tweet_about_corgi(status)
 
         return True
 
     def on_error(self, status):
         logging.warning("Error occurred: status %s", status)
 
+    def on_exception(self, exception):
+        logging.warning("Error occurred: exception %s", exception)
+
+    def on_timeout(self):
+        logging.warning("Error occurred: timeout")
+
+    def on_disconnect(self, notice):
+        # https://dev.twitter.com/docs/streaming-apis/messages#Disconnect_messages_disconnect
+        logging.warning("Error occurred: disconnect %s", notice)
+
+    def on_warning(self, notice):
+        logging.warning("Warning occurred: disconnect warning %s", notice)
+
+
 
 class Tweeter(Daemon):
     def run(self):
-        tStream = Stream(auth, corgiListener())
+        tStream = Stream(auth, CorgiListener())
         while True:
+            logging.info("Looping to start the tweeter")
             try:
                 tStream.userstream()
             except Exception as e:
