@@ -13,7 +13,7 @@ bot uses [tweepy](http://www.tweepy.org) to  access the Twitter streaming API.
 ```
 $ virtualenv corgienv
 $ . corgienv/bin/activate
-$ pip install --upgrade pip  # make sure pip is up to date
+(corgienv)$ pip install --upgrade pip  # make sure pip is up to date
 (corgienv)$ pip install -r requirements.txt
 ```
 
