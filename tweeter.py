@@ -33,7 +33,7 @@ def tweet_about_corgi(status):
     logging.debug("User who tweeted was %s", username)
     name = status.user.name
 
-    if "corgi" in username.lower() or "corgi" in name.lower() or username.lower() == "hartknyx":
+    if "corgi" in username.lower() or "corgi" in name.lower() or username.lower() == creds["username"]:
         logging.info("Not replying to a corgi-themed twitter or myself")
         return
 
