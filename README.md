@@ -13,6 +13,7 @@ bot uses [tweepy](http://www.tweepy.org) to  access the Twitter streaming API.
 ```
 $ virtualenv corgienv
 $ . corgienv/bin/activate
+$ pip install --upgrade pip  # make sure pip is up to date
 (corgienv)$ pip install -r requirements.txt
 ```
 
@@ -23,10 +24,10 @@ were generated under, so the corgibot doesn't reply to itself infinitely.
 
 ```
 {
-    "consumer_key": www,
-    "consumer_secret": xxx,
-    "access_token_key": yyy,
-    "access_token_secret": zzz,
+    "consumer_key": "www",
+    "consumer_secret": "xxx",
+    "access_token_key": "yyy",
+    "access_token_secret": "zzz",
     "username": "hartknyx"
 }
 ```
