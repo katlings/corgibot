@@ -33,8 +33,10 @@ access tokens in `corgibot/creds.json` as follows:
 
 The bot runs as a daemon, logging to `corgibot/corgibot.log`.
 
-`(corgienv)$ ./tweeter.py start`
-`(corgienv)$ ./tweeter.py restart`
-`(corgienv)$ ./tweeter.py stop`
+```
+(corgienv)$ ./tweeter.py start
+(corgienv)$ ./tweeter.py restart
+(corgienv)$ ./tweeter.py stop
+```
 
 Check for running status with `ps aux | grep tweeter`.
