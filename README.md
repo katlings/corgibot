@@ -18,8 +18,7 @@ $ . corgienv/bin/activate
 ```
 
 Required: Generate an API key for an app at http://apps.twitter.com, and store
-access tokens in `corgibot/creds.json`. Also include the username these keys
-were generated under, so the corgibot doesn't reply to itself infinitely.
+access tokens in `corgibot/creds.json`.
 
 
 ```
@@ -27,8 +26,7 @@ were generated under, so the corgibot doesn't reply to itself infinitely.
     "consumer_key": "www",
     "consumer_secret": "xxx",
     "access_token_key": "yyy",
-    "access_token_secret": "zzz",
-    "username": "hartknyx"
+    "access_token_secret": "zzz"
 }
 ```
 
