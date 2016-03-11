@@ -12,7 +12,7 @@ from tweepy.streaming import StreamListener
 from daemon import Daemon
 
 corgibotdir = os.path.dirname(os.path.abspath(__file__))
-logging.basicConfig(filename=corgibotdir + "/corgibot.log", filemode='w', level=logging.DEBUG)
+logging.basicConfig(filename=corgibotdir + "/corgibot.log", filemode='w', level=logging.DEBUG, format='[%(asctime)s] %(levelname)s: %(message)s')
 
 with open(corgibotdir + "/creds.json", 'r') as f:
     creds = json.loads(f.read())
