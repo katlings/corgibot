@@ -79,7 +79,7 @@ class Tweeter(Daemon):
             try:
                 tStream.userstream()
             except Exception as e:
-                logging.warning("Encountered an error: %s", e)
+                logging.exception("Encountered an error: %s", e)
                 continue
 
 
