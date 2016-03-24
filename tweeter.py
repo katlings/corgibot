@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import datetime
 import logging
 import os
 import sys
@@ -46,12 +47,16 @@ def tweet_about_corgi(status):
 
 class CorgiListener(StreamListener):
     def on_status(self, status):
+        logging.debug("Got status from %s", status.user.screen_name)
         if "corgi" in status.text.lower():
             logging.info("CORGI!!!!!")
             time.sleep(.1)
             tweet_about_corgi(status)
 
         return True
+
+    def keep_alive(self):
+        logging.debug("Keep alive at %s", datetime.datetime.now())
 
     def on_error(self, status):
         logging.warning("Error occurred: status %s", status)
@@ -70,17 +75,24 @@ class CorgiListener(StreamListener):
         logging.warning("Warning occurred: disconnect warning %s", notice)
 
 
+class ClosedException(Exception):
+    pass    
+
 
 class Tweeter(Daemon):
     def run(self):
+        def except_on_closed(*args):
+            raise ClosedException("Twitter closed the stream!")
+
         tStream = Stream(auth, CorgiListener())
+        tStream.on_closed = except_on_closed
         while True:
             logging.info("Looping to start the tweeter")
             try:
                 tStream.userstream()
             except Exception as e:
                 logging.exception("Encountered an error: %s", e)
-                continue
+                self.restart()
 
 
 if __name__ == "__main__":
