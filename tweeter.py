@@ -84,15 +84,14 @@ class Tweeter(Daemon):
         def except_on_closed(*args):
             raise ClosedException("Twitter closed the stream!")
 
-        tStream = Stream(auth, CorgiListener())
-        tStream.on_closed = except_on_closed
         while True:
             logging.info("Looping to start the tweeter")
             try:
+                tStream = Stream(auth, CorgiListener())
+                tStream.on_closed = except_on_closed
                 tStream.userstream()
             except Exception as e:
                 logging.exception("Encountered an error: %s", e)
-                self.restart()
 
 
 if __name__ == "__main__":
