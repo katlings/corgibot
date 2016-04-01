@@ -6,16 +6,19 @@ import os
 import sys
 import time
 
+import argparse
 import simplejson as json
 from tweepy import API, Stream, OAuthHandler
 from tweepy.streaming import StreamListener
 
 from daemon import Daemon
 
-corgibotdir = os.path.dirname(os.path.abspath(__file__))
-logging.basicConfig(filename=corgibotdir + "/corgibot.log", filemode='w', level=logging.DEBUG, format='[%(asctime)s] %(levelname)s: %(message)s')
+WATCHWORD = "corgi"
 
-with open(corgibotdir + "/creds.json", 'r') as f:
+botdir = os.path.dirname(os.path.abspath(__file__))
+logging.basicConfig(filename=botdir + "/bot.log", filemode='w', level=logging.DEBUG, format='[%(asctime)s] %(levelname)s: %(message)s')
+
+with open(botdir + "/creds.json", 'r') as f:
     creds = json.loads(f.read())
 
 consumer_key = creds["consumer_key"]
@@ -29,29 +32,29 @@ auth.set_access_token(access_token_key, access_token_secret)
 api = API(auth)
 
 
-def tweet_about_corgi(status):
+def tweet_about_watchword(status):
     username = status.user.screen_name
     logging.debug("User who tweeted was %s", username)
     name = status.user.name
 
-    if "corgi" in username.lower() or "corgi" in name.lower() or username.lower() == api.me().screen_name.lower():
-        logging.info("Not replying to a corgi-themed twitter or myself")
+    if WATCHWORD in username.lower() or WATCHWORD in name.lower() or username.lower() == api.me().screen_name.lower():
+        logging.info("Not replying to a %s-themed twitter or myself", WATCHWORD)
         return
 
     tid = status.id
     if tid:
-        logging.info("Everything in order; tweeting about the corgi!")
-        message = "@%s corgi!" % (username,)
+        logging.info("Everything in order; tweeting about the %s!", WATCHWORD)
+        message = "@%s %s!" % (username, WATCHWORD)
         api.update_status(status=message, in_reply_to_status_id=tid)
 
 
-class CorgiListener(StreamListener):
+class WatchwordListener(StreamListener):
     def on_status(self, status):
         logging.debug("Got status from %s", status.user.screen_name)
-        if "corgi" in status.text.lower():
-            logging.info("CORGI!!!!!")
+        if WATCHWORD in status.text.lower():
+            logging.info("%s!!!!!", WATCHWORD.upper())
             time.sleep(.1)
-            tweet_about_corgi(status)
+            tweet_about_watchword(status)
 
         return True
 
@@ -85,9 +88,9 @@ class Tweeter(Daemon):
             raise ClosedException("Twitter closed the stream!")
 
         while True:
-            logging.info("Looping to start the tweeter")
+            logging.info("Looping to start the tweeter; watching for %s", WATCHWORD)
             try:
-                tStream = Stream(auth, CorgiListener())
+                tStream = Stream(auth, WatchwordListener())
                 tStream.on_closed = except_on_closed
                 tStream.userstream()
             except Exception as e:
@@ -96,19 +99,25 @@ class Tweeter(Daemon):
 
 if __name__ == "__main__":
 
-    tweetd = Tweeter(corgibotdir + "/corgibot.pid", stdout=corgibotdir + "/corgibotd.log", stderr=corgibotdir + "/corgibotd.err")
+    tweetd = Tweeter(botdir + "/bot.pid", stdout=botdir + "/botd.log", stderr=botdir + "/botd.err")
 
-    if len(sys.argv) == 2:
-        if 'start' == sys.argv[1]:
-            tweetd.start()
-        elif 'stop' == sys.argv[1]:
-            tweetd.stop()
-        elif 'restart' == sys.argv[1]:
-            tweetd.restart()
-        else:
-            print "Unknown command"
-            sys.exit(2)
-        sys.exit(0)
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-w', '--watchword', default=WATCHWORD, help='Keyword to watch for and tweet about! (default: %s)' % WATCHWORD)
+    parser.add_argument('cmd', help='Command to run: start|stop|restart')
+
+    args = parser.parse_args()
+
+    WATCHWORD = args.watchword
+
+    if args.cmd == 'start':
+        tweetd.start()
+    elif args.cmd == 'stop':
+        tweetd.stop()
+    elif args.cmd == 'restart':
+        tweetd.restart()
     else:
-        print "usage: %s start|stop|restart" % sys.argv[0]
+        print "Unknown command: %s" % args.cmd
         sys.exit(2)
+
+    sys.exit(0)
