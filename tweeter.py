@@ -111,7 +111,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-w', '--watchword', default=WATCHWORD, help='Keyword to watch for and tweet about! (default: %s)' % WATCHWORD)
-    parser.add_argument('cmd', help='Command to run: start|stop|restart')
+    parser.add_argument('cmd', choices=['start', 'stop', 'restart'], help='Command to run')
 
     args = parser.parse_args()
 
@@ -123,8 +123,5 @@ if __name__ == "__main__":
         tweetd.stop()
     elif args.cmd == 'restart':
         tweetd.restart()
-    else:
-        print "Unknown command: %s" % args.cmd
-        sys.exit(2)
 
     sys.exit(0)

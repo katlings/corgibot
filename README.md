@@ -38,6 +38,7 @@ The bot runs as a daemon, logging to `corgibot/bot.log`.
 (corgienv)$ ./tweeter.py start
 (corgienv)$ ./tweeter.py restart
 (corgienv)$ ./tweeter.py stop
+(corgienv)$ ./tweeter.py -w labradoodle restart
 ```
 
 Check for running status with `ps aux | grep tweeter`.
