@@ -32,29 +32,33 @@ auth.set_access_token(access_token_key, access_token_secret)
 api = API(auth)
 
 
-def tweet_about_watchword(status):
+def tweet_about_watchword(status, watchword):
     username = status.user.screen_name
     logging.debug("User who tweeted was %s", username)
     name = status.user.name
 
-    if WATCHWORD in username.lower() or WATCHWORD in name.lower() or username.lower() == api.me().screen_name.lower():
-        logging.info("Not replying to a %s-themed twitter or myself", WATCHWORD)
+    if watchword in username.lower() or watchword in name.lower() or username.lower() == api.me().screen_name.lower():
+        logging.info("Not replying to a %s-themed twitter or myself", watchword)
         return
 
     tid = status.id
     if tid:
-        logging.info("Everything in order; tweeting about the %s!", WATCHWORD)
-        message = "@%s %s!" % (username, WATCHWORD)
+        logging.info("Everything in order; tweeting about the %s!", watchword)
+        message = "@%s %s!" % (username, watchword)
         api.update_status(status=message, in_reply_to_status_id=tid)
 
 
 class WatchwordListener(StreamListener):
+    def __init__(self, watchword):
+        super(WatchwordListener, self).__init__()
+        self.watchword = watchword
+
     def on_status(self, status):
         logging.debug("Got status from %s", status.user.screen_name)
-        if WATCHWORD in status.text.lower():
-            logging.info("%s!!!!!", WATCHWORD.upper())
+        if self.watchword in status.text.lower():
+            logging.info("%s!!!!!", self.watchword.upper())
             time.sleep(.1)
-            tweet_about_watchword(status)
+            tweet_about_watchword(status, self.watchword)
 
         return True
 
@@ -82,15 +86,19 @@ class ClosedException(Exception):
     pass    
 
 
-class Tweeter(Daemon):
+class WatchwordTweeter(Daemon):
+    def __init__(self, *args, **kwargs):
+        self.watchword = kwargs.pop('watchword', WATCHWORD)
+        super(WatchwordTweeter, self).__init__(*args, **kwargs)
+
     def run(self):
         def except_on_closed(*args):
             raise ClosedException("Twitter closed the stream!")
 
         while True:
-            logging.info("Looping to start the tweeter; watching for %s", WATCHWORD)
+            logging.info("Looping to start the tweeter; watching for %s", self.watchword)
             try:
-                tStream = Stream(auth, WatchwordListener())
+                tStream = Stream(auth, WatchwordListener(self.watchword))
                 tStream.on_closed = except_on_closed
                 tStream.userstream()
             except Exception as e:
@@ -99,7 +107,6 @@ class Tweeter(Daemon):
 
 if __name__ == "__main__":
 
-    tweetd = Tweeter(botdir + "/bot.pid", stdout=botdir + "/botd.log", stderr=botdir + "/botd.err")
 
     parser = argparse.ArgumentParser()
 
@@ -108,7 +115,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    WATCHWORD = args.watchword
+    tweetd = WatchwordTweeter(botdir + "/bot.pid", stdout=botdir + "/botd.log", stderr=botdir + "/botd.err", watchword=args.watchword)
 
     if args.cmd == 'start':
         tweetd.start()
