@@ -32,7 +32,7 @@ auth.set_access_token(access_token_key, access_token_secret)
 api = API(auth)
 
 
-def tweet_about_watchword(status, watchword):
+def tweet_about_watchword(status, watchword, reply):
     username = status.user.screen_name
     logging.debug("User who tweeted was %s", username)
     name = status.user.name
@@ -44,21 +44,22 @@ def tweet_about_watchword(status, watchword):
     tid = status.id
     if tid:
         logging.info("Everything in order; tweeting about the %s!", watchword)
-        message = "@%s %s!" % (username, watchword)
+        message = "@%s %s!" % (username, reply)
         api.update_status(status=message, in_reply_to_status_id=tid)
 
 
 class WatchwordListener(StreamListener):
-    def __init__(self, watchword):
+    def __init__(self, watchword, reply):
         super(WatchwordListener, self).__init__()
         self.watchword = watchword
+        self.reply = reply
 
     def on_status(self, status):
         logging.debug("Got status from %s", status.user.screen_name)
         if self.watchword in status.text.lower():
-            logging.info("%s!!!!!", self.watchword.upper())
+            logging.info("%s!!!!!", self.watchword)
             time.sleep(.1)
-            tweet_about_watchword(status, self.watchword)
+            tweet_about_watchword(status, self.watchword, self.reply)
 
         return True
 
@@ -89,6 +90,7 @@ class ClosedException(Exception):
 class WatchwordTweeter(Daemon):
     def __init__(self, *args, **kwargs):
         self.watchword = kwargs.pop('watchword', WATCHWORD)
+        self.reply = kwargs.pop('reply', WATCHWORD)
         super(WatchwordTweeter, self).__init__(*args, **kwargs)
 
     def run(self):
@@ -96,13 +98,14 @@ class WatchwordTweeter(Daemon):
             raise ClosedException("Twitter closed the stream!")
 
         while True:
-            logging.info("Looping to start the tweeter; watching for %s", self.watchword)
+            logging.info("Looping to start the tweeter; watching for %s and replying with %s", self.watchword, self.reply)
             try:
-                tStream = Stream(auth, WatchwordListener(self.watchword))
+                tStream = Stream(auth, WatchwordListener(self.watchword, self.reply))
                 tStream.on_closed = except_on_closed
                 tStream.userstream()
             except Exception as e:
                 logging.exception("Encountered an error: %s", e)
+            time.sleep(20)
 
 
 if __name__ == "__main__":
@@ -110,12 +113,13 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-w', '--watchword', default=WATCHWORD, help='Keyword to watch for and tweet about! (default: %s)' % WATCHWORD)
+    parser.add_argument('-w', '--watchword', default=WATCHWORD, help='Keyword to watch for! (default: %s)' % WATCHWORD)
+    parser.add_argument('-r', '--reply', default=WATCHWORD, help='Keyword to tweet about! (default: %s)' % WATCHWORD)
     parser.add_argument('cmd', choices=['start', 'stop', 'restart'], help='Command to run')
 
     args = parser.parse_args()
 
-    tweetd = WatchwordTweeter(botdir + "/bot.pid", stdout=botdir + "/botd.log", stderr=botdir + "/botd.err", watchword=args.watchword)
+    tweetd = WatchwordTweeter(botdir + "/bot.pid", stdout=botdir + "/botd.log", stderr=botdir + "/botd.err", watchword=args.watchword, reply=args.reply)
 
     if args.cmd == 'start':
         tweetd.start()
