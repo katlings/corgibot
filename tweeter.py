@@ -16,7 +16,7 @@ from daemon import Daemon
 WATCHWORD = "corgi"
 
 botdir = os.path.dirname(os.path.abspath(__file__))
-logging.basicConfig(filename=botdir + "/bot.log", filemode='w', level=logging.DEBUG, format='[%(asctime)s] %(levelname)s: %(message)s')
+logging.basicConfig(filename=botdir + "/bot.log", filemode='w', level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
 with open(botdir + "/creds.json", 'r') as f:
     creds = json.loads(f.read())
@@ -55,8 +55,15 @@ class WatchwordListener(StreamListener):
         self.reply = reply
 
     def on_status(self, status):
+        def should_fire(status):
+            if self.watchword in status.text.lower():
+                return True
+            if status.is_quote_status:
+                return self.watchword in status.quoted_status.get("text", "").lower()
+
+
         logging.debug("Got status from %s", status.user.screen_name)
-        if self.watchword in status.text.lower():
+        if should_fire(status):
             logging.info("%s!!!!!", self.watchword)
             time.sleep(.1)
             tweet_about_watchword(status, self.watchword, self.reply)
