@@ -58,8 +58,14 @@ class WatchwordListener(StreamListener):
         def should_fire(status):
             if self.watchword in status.text.lower():
                 return True
-            if status.is_quote_status:
-                return self.watchword in status.quoted_status.get("text", "").lower()
+
+            try:
+                quoted_status = status.quoted_status
+                return self.watchword in (quoted_status.get("text", "").lower(),
+                                          quoted_status.get("user", {}).get("screen_name", "").lower(),
+                                          quoted_status.get("user", {}).get("name", "").lower())
+            except AttributeError:
+                return False
 
 
         logging.debug("Got status from %s", status.user.screen_name)
