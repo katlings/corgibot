@@ -61,9 +61,9 @@ class WatchwordListener(StreamListener):
 
             try:
                 quoted_status = status.quoted_status
-                return self.watchword in (quoted_status.get("text", "").lower(),
-                                          quoted_status.get("user", {}).get("screen_name", "").lower(),
-                                          quoted_status.get("user", {}).get("name", "").lower())
+                return any(self.watchword in x for x in (quoted_status.get("text", "").lower(),
+                                                         quoted_status.get("user", {}).get("screen_name", "").lower(),
+                                                         quoted_status.get("user", {}).get("name", "").lower()))
             except AttributeError:
                 return False
 
