@@ -73,17 +73,16 @@ class HomeTimelinePoller:
         time.sleep(wait_time + 1)
         return
 
-
     def should_tweet(self, status):
         if self.watchword in status.full_text.lower():
             logging.info('Found word in regular status')
             return True
 
-        # TODO: fixme
         if status.is_quote_status:
             try:
                 logging.info('Trying quoted status')
-                quoted_status = status.quoted_status
+                quoted_status_id = status.quoted_status_id
+                quoted_status = api.get_status(quoted_status_id, tweet_mode='extended')
                 return self.watchword in quoted_status.user.name.lower() or self.watchword in quoted_status.user.screen_name.lower() or self.should_tweet(quoted_status)
 
             except AttributeError as e:
@@ -101,6 +100,9 @@ class HomeTimelinePoller:
                     yield cursor.next()
                 except (tweepy.RateLimitError, tweepy.error.TweepError):
                     self.await_rate_limit()
+                except StopIteration:
+                    logging.info('sleeping for 60 seconds')
+                    time.sleep(60)
         first = True
 
         cursor = Cursor(api.home_timeline, since_id=self.last_seen, tweet_mode='extended')
