@@ -137,7 +137,7 @@ class HomeTimelinePoller:
         # special case for first because fuck it sloppy python
         if self.last_seen is None:
             latest_tweets = api.home_timeline(since_id=None, max_id=None, count=200, tweet_mode='extended')
-            self.last_seen = latest_tweets[-1].id
+            self.last_seen = latest_tweets[0].id
             logging.info(f'last seen {self.last_seen}')
 
             for status in latest_tweets:
