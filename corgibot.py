@@ -58,6 +58,7 @@ class HomeTimelinePoller:
     def check_rate_limit(self):
         limits = api.rate_limit_status(resources='statuses')
         home = limits['resources']['statuses']['/statuses/home_timeline']
+        logging.info(home)
         return home['remaining'], home['reset']
     
     def await_rate_limit(self):
@@ -80,7 +81,7 @@ class HomeTimelinePoller:
 
         if status.is_quote_status:
             try:
-                logging.info('Trying quoted status')
+                logging.debug('Trying quoted status')
                 quoted_status_id = status.quoted_status_id
                 quoted_status = api.get_status(quoted_status_id, tweet_mode='extended')
                 return self.watchword in quoted_status.user.name.lower() or self.watchword in quoted_status.user.screen_name.lower() or self.should_tweet(quoted_status)
@@ -92,6 +93,7 @@ class HomeTimelinePoller:
         return False
     
     def process_timeline(self):
+        """ cursor doesn't seem to be working; don't use this for now """
         def limit_handled(cursor):
             while True:
                 try:
@@ -120,6 +122,7 @@ class HomeTimelinePoller:
             return
 
         for status in limit_handled(cursor.items()):
+            logging.info('status %s', status)
             if first:
                 self.last_seen = status.id
                 first = False
@@ -128,11 +131,37 @@ class HomeTimelinePoller:
                 logging.info(f'TWEET TWEET {status.full_text}')
                 tweet_about_watchword(status, self.watchword, self.reply)
 
+    def check_timeline(self):
+        self.await_rate_limit()
+
+        # special case for first because fuck it sloppy python
+        if self.last_seen is None:
+            latest_tweets = api.home_timeline(since_id=None, max_id=None, count=200, tweet_mode='extended')
+            self.last_seen = latest_tweets[-1].id
+            logging.info(f'last seen {self.last_seen}')
+
+            for status in latest_tweets:
+                logging.debug(status.full_text)
+                if self.should_tweet(status):
+                    logging.info(f'TWEET TWEET {status.full_text}')
+                    tweet_about_watchword(status, self.watchword, self.reply)
+            return
+
+        latest_tweets = api.home_timeline(since_id=self.last_seen, max_id=None, count=200, tweet_mode='extended')
+        # let's just pray we never see more than 200 tweets in a 15 minute window
+        if latest_tweets and len(latest_tweets) > 150:
+            logging.warning(f'WTF, we saw {len(latest_tweets)} tweets since the last one')
+        self.last_seen = latest_tweets[0].id if latest_tweets else self.last_seen
+        logging.info(f'Gathered {len(latest_tweets)} tweets')
+        for status in latest_tweets:
+            if self.should_tweet(status):
+                logging.info(f'TWEET TWEET {status.full_text}')
+                tweet_about_watchword(status, self.watchword, self.reply)
 
     def run(self):
         while True:
             try:
-                self.process_timeline()
+                self.check_timeline()
             except:
                 logging.exception('Something went wrong')
             finally:
