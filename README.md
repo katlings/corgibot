@@ -32,13 +32,8 @@ access tokens in `corgibot/creds.json`.
 
 ### Running the Bot
 
-The bot runs as a daemon, logging to `corgibot/bot.log`.
+The bot runs as a script, logging to `corgibot/bot.log`. Start with `./corgibot.py &` to run in the background.
 
 ```
-(corgienv)$ ./tweeter.py start
-(corgienv)$ ./tweeter.py restart
-(corgienv)$ ./tweeter.py stop
-(corgienv)$ ./tweeter.py -w labradoodle restart
+(corgienv)$ ./corgibot.py -w corg -r corgi
 ```
-
-Check for running status with `ps aux | grep tweeter`.
