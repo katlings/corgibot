@@ -5,8 +5,11 @@ import logging
 import os
 import sys
 import time
+import urllib.request
 
 import argparse
+from imageai.Detection import ObjectDetection
+from imageai.Classification import ImageClassification
 import simplejson as json
 import tweepy
 from tweepy import API, Cursor, Stream, OAuthHandler
@@ -32,6 +35,19 @@ auth.set_access_token(access_token_key, access_token_secret)
 
 api = API(auth)
 
+detector = ObjectDetection()
+detector.setModelTypeAsYOLOv3()
+detector.setModelPath(os.path.join(botdir, 'models', 'yolo.h5'))
+detector.loadModel()
+dogs = detector.CustomObjects(dog=True)
+
+prediction = ImageClassification()
+prediction.setModelTypeAsResNet50()
+prediction.setModelPath(os.path.join(botdir, 'models', 'resnet50_imagenet_tf.2.0.h5'))
+prediction.loadModel()
+
+TEMP_IMAGE_PATH = os.path.join(botdir, 'images', 'check-for-corgi.jpg')
+
 
 def tweet_about_watchword(status, watchword, reply):
     username = status.user.screen_name
@@ -50,10 +66,11 @@ def tweet_about_watchword(status, watchword, reply):
 
 
 class HomeTimelinePoller:
-    def __init__(self, watchword, reply):
+    def __init__(self, watchword, reply, verbose):
         self.last_seen = None
         self.watchword = watchword
         self.reply = reply
+        self.verbose = verbose
 
     def check_rate_limit(self):
         limits = api.rate_limit_status(resources='statuses')
@@ -74,10 +91,39 @@ class HomeTimelinePoller:
         time.sleep(wait_time + 1)
         return
 
+    def check_for_corgi_image(self, filepath):
+        _, _, extracted_images = detector.detectCustomObjectsFromImage(custom_objects=dogs, input_image=filepath, output_type='array', minimum_percentage_probability=30, extract_detected_objects=True)
+
+        for image in extracted_images:
+            preds, probs = prediction.classifyImage(image, input_type='array')
+            for pred, prob in zip(preds, probs):
+                if pred in ['Cardigan', 'Pembroke']:
+                    logging.info('Might have found a picture of a corgi!')
+                    logging.info(prob)
+                    if prob > 30:
+                        return True
+
+        return False
+
+
     def should_tweet(self, status):
+        if self.verbose:
+            print(status.__dict__)
         if self.watchword in status.full_text.lower():
             logging.info('Found word in regular status')
             return True
+
+        if 'media' in status.entities:
+            for m in status.entities['media']:
+                murl = m.get('media_url_https')
+                if murl and murl.endswith('.jpg'):
+                    urllib.request.urlretrieve(murl, TEMP_IMAGE_PATH)
+                    if self.check_for_corgi_image(TEMP_IMAGE_PATH):
+                        logging.info('Found a picture of a corgi!!')
+                        return True
+                    else:
+                        os.remove(TEMP_IMAGE_PATH)
+
 
         if status.is_quote_status:
             try:
@@ -136,22 +182,15 @@ class HomeTimelinePoller:
 
         # special case for first because fuck it sloppy python
         if self.last_seen is None:
-            latest_tweets = api.home_timeline(since_id=None, max_id=None, count=200, tweet_mode='extended')
+            latest_tweets = api.home_timeline(since_id=None, max_id=None, count=20, tweet_mode='extended')
             self.last_seen = latest_tweets[0].id
             logging.info(f'last seen {self.last_seen}')
+        else:
+            latest_tweets = api.home_timeline(since_id=self.last_seen, max_id=None, count=200, tweet_mode='extended') # let's just pray we never see more than 200 tweets in a 15 minute window
+            if latest_tweets and len(latest_tweets) > 150:
+                logging.warning(f'WTF, we saw {len(latest_tweets)} tweets since the last one')
+            self.last_seen = latest_tweets[0].id if latest_tweets else self.last_seen
 
-            for status in latest_tweets:
-                logging.debug(status.full_text)
-                if self.should_tweet(status):
-                    logging.info(f'TWEET TWEET {status.full_text}')
-                    tweet_about_watchword(status, self.watchword, self.reply)
-            return
-
-        latest_tweets = api.home_timeline(since_id=self.last_seen, max_id=None, count=200, tweet_mode='extended')
-        # let's just pray we never see more than 200 tweets in a 15 minute window
-        if latest_tweets and len(latest_tweets) > 150:
-            logging.warning(f'WTF, we saw {len(latest_tweets)} tweets since the last one')
-        self.last_seen = latest_tweets[0].id if latest_tweets else self.last_seen
         logging.info(f'Gathered {len(latest_tweets)} tweets')
         for status in latest_tweets:
             if self.should_tweet(status):
@@ -174,6 +213,7 @@ if __name__ == "__main__":
 
     parser.add_argument('-w', '--watchword', default=WATCHWORD, help='Keyword to watch for! (default: %s)' % WATCHWORD)
     parser.add_argument('-r', '--reply', default=WATCHWORD, help='Keyword to tweet about! (default: %s)' % WATCHWORD)
+    parser.add_argument('-v', '--verbose', action="store_true", help='Print debugging output')
     args = parser.parse_args()
-    p = HomeTimelinePoller(args.watchword, args.reply)
+    p = HomeTimelinePoller(args.watchword, args.reply, args.verbose)
     p.run()
