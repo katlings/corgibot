@@ -42,8 +42,8 @@ detector.loadModel()
 dogs = detector.CustomObjects(dog=True)
 
 prediction = ImageClassification()
-prediction.setModelTypeAsResNet50()
-prediction.setModelPath(os.path.join(botdir, 'models', 'resnet50_imagenet_tf.2.0.h5'))
+prediction.setModelTypeAsInceptionV3()
+prediction.setModelPath(os.path.join(botdir, 'models', 'inception_v3_weights_tf_dim_ordering_tf_kernels.h5'))
 prediction.loadModel()
 
 TEMP_IMAGE_PATH = os.path.join(botdir, 'images', 'check-for-corgi.jpg')
@@ -108,7 +108,7 @@ class HomeTimelinePoller:
 
     def should_tweet(self, status):
         if self.verbose:
-            print(status.__dict__)
+            logging.debug(status.__dict__)
         if self.watchword in status.full_text.lower():
             logging.info('Found word in regular status')
             return True
